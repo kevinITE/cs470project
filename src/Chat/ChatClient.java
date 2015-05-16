@@ -158,7 +158,7 @@ public class ChatClient {
             //  Use certificate to establish secure connection with server
             //
 
-            FileInputStream inputStream = new FileInputStream(new File("C:\\Users\\Emre\\"+keyStoreName));
+            FileInputStream inputStream = new FileInputStream(new File("/home/yigit/Chat/clientks"));
             KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
             keystore.load(inputStream, keyStorePassword);
 
@@ -171,17 +171,16 @@ public class ChatClient {
                 // Get public key
                 publicKey = cert.getPublicKey();
             }
+
             Socket ca_socket = new Socket(caHost, caPort);
-            OutputStream socketOut = ca_socket.getOutputStream();
-            ObjectInputStream ois = new ObjectInputStream(ca_socket.getInputStream());
-            PrintWriter caPrintWriter = new PrintWriter(socketOut, true);
-            ObjectOutputStream oos = new ObjectOutputStream(socketOut);
+            InputStream inStream = ca_socket.getInputStream();
+            OutputStream outStream = ca_socket.getOutputStream();
 
-            caPrintWriter.println(_loginName);
-            caPrintWriter.println(password);
-            oos.writeObject(publicKey);
+            ObjectOutputStream objOut = new ObjectOutputStream(outStream);
+            objOut.writeObject(new CertRequest(_loginName, new String(password), publicKey));
 
-            Certificate cert = (X509Certificate) ois.readObject();
+            ObjectInputStream objIn = new ObjectInputStream(inStream);
+            Certificate cert = (X509Certificate) objIn.readObject();
             System.out.println(cert.toString());
 
             _socket = new Socket(serverHost, serverPort);

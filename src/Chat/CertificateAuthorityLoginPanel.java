@@ -56,10 +56,12 @@ public class CertificateAuthorityLoginPanel extends JPanel {
 
         _keystoreFileNameField = new JTextField();
         addField(gridBag, _keystoreFileNameField, 2, 1, 1, 1);
+        _keystoreFileNameField.setText("/home/yigit/Chat/caks");
 
         _privateKeyPassField = new JPasswordField();
         _privateKeyPassField.setEchoChar('*');
         addField(gridBag, _privateKeyPassField, 2, 2, 1, 1);
+        _privateKeyPassField.setText("123456");
 
   //      _permissionsFileNameField = new JTextField();
   //      addField(gridBag, _permissionsFileNameField, 2, 3, 1, 1);
@@ -70,6 +72,7 @@ public class CertificateAuthorityLoginPanel extends JPanel {
 
         _portField = new JTextField();
         addField(gridBag, _portField, 2, 5, 1, 1);
+        _portField.setText("6666");
 
         _errorLabel = addLabel(gridBag, " ", SwingConstants.CENTER,
                 1, 6, 2, 1);

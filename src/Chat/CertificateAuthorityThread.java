@@ -66,32 +66,27 @@ public class CertificateAuthorityThread extends Thread {
 
             while (true) {
 
-                Socket socket = _serverSocket.accept();
+                try {
+                    Socket socket = _serverSocket.accept();
 
-                InputStream inStream = socket.getInputStream();
-                OutputStream outStream = socket.getOutputStream();
+                    InputStream inStream = socket.getInputStream();
+                    OutputStream outStream = socket.getOutputStream();
 
-                BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
-//                PrintWriter out = new PrintWriter(outStream, true);
+                    ObjectInputStream objIn = new ObjectInputStream(inStream);
+                    CertRequest certRequest = (CertRequest) objIn.readObject();
 
-                ObjectInputStream objIn = new ObjectInputStream(inStream);
-                ObjectOutputStream objOut = new ObjectOutputStream(outStream);
+                    if(certRequest != null) {
+                        // TODO: validate username password
+                        _outputArea.append("Username: " + certRequest.username + "\n");
+                        _outputArea.append("Password: " + certRequest.password + "\n");
 
-                String username;
-                String password;
-                PublicKey publicKey;
-
-                username = in.readLine();
-                password = in.readLine();
-                publicKey = (PublicKey) objIn.readObject();
-
-                if(username != null && password != null && publicKey != null) {
-                    // TODO: validate username password
-                    _outputArea.append("Username: " + username + "\n");
-                    _outputArea.append("Password: " + password + "\n");
-
-                    X509Certificate cert = X509CertificateGenerator.generateCertificate("\"CN="+username+"\"", _ca._keyPair, 365, "SHA512withRSA");
-                    objOut.writeObject(cert);
+                        X509Certificate cert = X509CertificateGenerator.generateCertificate("CN="+certRequest.username, _ca._keyPair, 365, "SHA512withRSA");
+                        ObjectOutputStream objOut = new ObjectOutputStream(outStream);
+                        objOut.writeObject(cert);
+                    }
+                } catch (Exception e) {
+                    System.out.println("Client connection error: " + e.getMessage());
+                    e.printStackTrace();
                 }
             }
         } catch (Exception e) {
