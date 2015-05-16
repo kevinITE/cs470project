@@ -15,7 +15,7 @@ import javax.swing.*;
 public class ChatLoginPanel extends JPanel {
 
     JTextField _loginNameField;
-    JPasswordField _passwordField;
+    JTextField _roomField;
     JTextField _serverHostField;
     JTextField _serverPortField;
     JTextField _caHostField;
@@ -47,8 +47,8 @@ public class ChatLoginPanel extends JPanel {
         addLabel(gridBag, "Welcome to Chat", SwingConstants.CENTER,
                 1, 0, 2, 1);
         addLabel(gridBag, "Username: ", SwingConstants.LEFT, 1, 1, 1, 1);
-        addLabel(gridBag, "Password: ", SwingConstants.LEFT, 1, 2, 1, 1);
-        addLabel(gridBag, "KeyStore File Name: ", SwingConstants.LEFT, 1, 3, 1, 1);
+        addLabel(gridBag, "Room Name: ", SwingConstants.LEFT, 1, 2, 1, 1);
+        addLabel(gridBag, "KeyStore File Path: ", SwingConstants.LEFT, 1, 3, 1, 1);
         addLabel(gridBag, "KeyStore Password: ", SwingConstants.LEFT, 1, 4, 1, 1);
         addLabel(gridBag, "Server Host Name: ", SwingConstants.LEFT, 1, 5, 1, 1);
         addLabel(gridBag, "Server Port: ", SwingConstants.LEFT, 1, 6, 1, 1);
@@ -57,9 +57,8 @@ public class ChatLoginPanel extends JPanel {
 
         _loginNameField = new JTextField();
         addField(gridBag, _loginNameField, 2, 1, 1, 1);
-        _passwordField = new JPasswordField();
-        _passwordField.setEchoChar('*');
-        addField(gridBag, _passwordField, 2, 2, 1, 1);
+        _roomField = new JTextField();
+        addField(gridBag, _roomField, 2, 2, 1, 1);
 
         _keyStoreNameField = new JTextField();
         addField(gridBag, _keyStoreNameField, 2, 3, 1, 1);
@@ -83,8 +82,8 @@ public class ChatLoginPanel extends JPanel {
         // just for testing purpose
 
         _loginNameField.setText("cs470");
-        _passwordField.setText("123456");
-        _keyStoreNameField.setText(".keystore");
+        _roomField.setText("general");
+        _keyStoreNameField.setText("/home/yigit/Chat/clientks");
         _keyStorePasswordField.setText("123456");
         _caHostField.setText("139.179.92.107");
         _caPortField.setText("6666");
@@ -146,7 +145,7 @@ public class ChatLoginPanel extends JPanel {
         int caPort;
 
         String loginName = _loginNameField.getText();
-        char[] password = _passwordField.getPassword();
+        String room = _roomField.getText();
 
         String keyStoreName = _keyStoreNameField.getText();
         char[] keyStorePassword = _keyStorePasswordField.getPassword();
@@ -155,7 +154,7 @@ public class ChatLoginPanel extends JPanel {
         String caHost = _caHostField.getText();
 
         if (loginName.equals("")
-                || password.length == 0
+                || room.equals("")
                 || keyStoreName.equals("")
                 || keyStorePassword.length == 0
                 || serverHost.equals("")
@@ -188,7 +187,7 @@ public class ChatLoginPanel extends JPanel {
         System.out.println("We are connecting to ...");
 
         switch (_client.connect(loginName,
-                password,
+                room,
                 keyStoreName,
                 keyStorePassword,
                 caHost,

@@ -15,15 +15,9 @@ import java.io.*;
 import javax.swing.JTextArea;
 
 //  Crypto
-import java.security.*;
+import java.security.KeyStore;
 import java.security.cert.Certificate;
-import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.security.spec.*;
-import java.security.interfaces.*;
-import javax.crypto.*;
-import javax.crypto.spec.*;
-import javax.crypto.interfaces.*;
 
 public class CertificateAuthorityThread extends Thread {
 
@@ -32,9 +26,6 @@ public class CertificateAuthorityThread extends Thread {
     private int _portNum;
     private String _hostName;
     private JTextArea _outputArea;
-    private KeyPair _keyPair;
-    private String keyAlias = "client";
-    private char[] keyStorePassword = "123456".toCharArray();
 
     public CertificateAuthorityThread(CertificateAuthority ca) {
 
@@ -65,7 +56,6 @@ public class CertificateAuthorityThread extends Thread {
             _outputArea.append("CA waiting on " + _hostName + " port " + _portNum + "\n");
 
             while (true) {
-
                 try {
                     Socket socket = _serverSocket.accept();
 
@@ -73,14 +63,29 @@ public class CertificateAuthorityThread extends Thread {
                     OutputStream outStream = socket.getOutputStream();
 
                     ObjectInputStream objIn = new ObjectInputStream(inStream);
-                    CertRequest certRequest = (CertRequest) objIn.readObject();
+                    PackageRegister packageRegister = (PackageRegister) objIn.readObject();
 
-                    if(certRequest != null) {
-                        // TODO: validate username password
-                        _outputArea.append("Username: " + certRequest.username + "\n");
-                        _outputArea.append("Password: " + certRequest.password + "\n");
+                    if(packageRegister != null) {
+                        _outputArea.append("Registration request: " + packageRegister.username + "\n");
 
-                        X509Certificate cert = X509CertificateGenerator.generateCertificate("CN="+certRequest.username, _ca._keyPair, 365, "SHA512withRSA");
+                        Certificate existingCert = _ca._keyStore.getCertificate(packageRegister.username);
+                        X509Certificate cert = null;
+
+                        if(existingCert == null) {
+                            cert = X509CertificateGenerator.generateCertificate("CN="+ packageRegister.username, _ca._keyPair, 365, "SHA256withRSA");
+
+                            // save the certificate
+                            _ca._keyStore.setCertificateEntry(packageRegister.username, cert);
+                            FileOutputStream keyStoreStream = new FileOutputStream(new File(_ca._ksFileName));
+                            _ca._keyStore.store(keyStoreStream, _ca._privateKeyPass);
+
+                            _outputArea.append("A new certificate is created and sent. Registration completed.");
+                        }
+                        else {
+                            _outputArea.append("Username is already in use.");
+                        }
+
+                        // send certificate to the client
                         ObjectOutputStream objOut = new ObjectOutputStream(outStream);
                         objOut.writeObject(cert);
                     }

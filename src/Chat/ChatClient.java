@@ -14,25 +14,15 @@ import javax.swing.*;
 
 //  Java
 import java.io.*;
-import java.math.BigInteger;
 
 // socket
 import java.net.*;
-import java.io.*;
-import java.net.*;
-
 
 
 //  Crypto
 import java.security.*;
 import java.security.cert.*;
 import java.security.cert.Certificate;
-import java.security.spec.*;
-import java.security.interfaces.*;
-import javax.crypto.*;
-import javax.crypto.spec.*;
-import javax.crypto.interfaces.*;
-import javax.security.auth.x500.*;
 
 public class ChatClient {
 
@@ -97,7 +87,7 @@ public class ChatClient {
     //  Component initialization
     private void initComponents() throws Exception {
 
-        _appFrame = new JFrame("CS255 Chat");
+        _appFrame = new JFrame("CS470 Chat");
         _layout = new CardLayout();
         _appFrame.getContentPane().setLayout(_layout);
         _loginPanel = new ChatLoginPanel(this);
@@ -140,7 +130,7 @@ public class ChatClient {
     //  to access your private key on the file system
     //  The other is your authentication password on the CA.
     //
-    public int connect(String loginName, char[] password,
+    public int connect(String loginName, String room,
             String keyStoreName, char[] keyStorePassword,
             String caHost, int caPort,
             String serverHost, int serverPort) {
@@ -158,7 +148,7 @@ public class ChatClient {
             //  Use certificate to establish secure connection with server
             //
 
-            FileInputStream inputStream = new FileInputStream(new File("/home/yigit/Chat/clientks"));
+            FileInputStream inputStream = new FileInputStream(new File(keyStoreName));
             KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
             keystore.load(inputStream, keyStorePassword);
 
@@ -177,11 +167,14 @@ public class ChatClient {
             OutputStream outStream = ca_socket.getOutputStream();
 
             ObjectOutputStream objOut = new ObjectOutputStream(outStream);
-            objOut.writeObject(new CertRequest(_loginName, new String(password), publicKey));
+            objOut.writeObject(new PackageRegister(_loginName, publicKey));
 
             ObjectInputStream objIn = new ObjectInputStream(inStream);
-            Certificate cert = (X509Certificate) objIn.readObject();
-            System.out.println(cert.toString());
+            try {
+                Certificate cert = (X509Certificate) objIn.readObject();
+            } catch (ClassCastException caste) {
+                return CONNECTION_REFUSED;
+            }
 
             _socket = new Socket(serverHost, serverPort);
             _out = new PrintWriter(_socket.getOutputStream(), true);

@@ -47,8 +47,8 @@ public class CertificateAuthorityLoginPanel extends JPanel {
 
         addLabel(gridBag, "Certificate Server Startup Panel", SwingConstants.CENTER,
                 1, 0, 2, 1);
-        addLabel(gridBag, "KeyStore File Name: ", SwingConstants.LEFT, 1, 1, 1, 1);
-        addLabel(gridBag, "KeyStore (Private Key) Password: ", SwingConstants.LEFT, 1, 2, 1, 1);
+        addLabel(gridBag, "KeyStore File Path: ", SwingConstants.LEFT, 1, 1, 1, 1);
+        addLabel(gridBag, "KeyStore Password: ", SwingConstants.LEFT, 1, 2, 1, 1);
   //      addLabel(gridBag, "Permission File Name: ", SwingConstants.LEFT, 1, 3, 1, 1);
   //      addLabel(gridBag, "Permission File Password: ", SwingConstants.LEFT, 1, 4, 1, 1);
         addLabel(gridBag, "Port Number: ", SwingConstants.LEFT, 1, 5, 1, 1);
@@ -80,7 +80,7 @@ public class CertificateAuthorityLoginPanel extends JPanel {
         // just for testing purposs
         _errorLabel.setForeground(Color.red);
 
-        _startupButton = new JButton("Startup");
+        _startupButton = new JButton("Start");
         c.gridx = 1;
         c.gridy = 8;
         c.gridwidth = 2;

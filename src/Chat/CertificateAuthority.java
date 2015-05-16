@@ -44,6 +44,9 @@ public class CertificateAuthority {
     CardLayout _layout;
     JFrame _appFrame;
     CertificateAuthorityThread _thread;
+    KeyStore _keyStore;
+    String _ksFileName;
+    char[] _privateKeyPass;
     KeyPair _keyPair;
     //  Port number to listen on
     private int _portNum;
@@ -129,11 +132,13 @@ public class CertificateAuthority {
         //  Failure codes to return are defined on the top
         //
 
+        this._ksFileName =_ksFileName;
+        this._privateKeyPass =_privateKeyPass;
         FileInputStream keyStoreStream = new FileInputStream(new File(_ksFileName));
-        KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
-        keyStore.load(keyStoreStream, _privateKeyPass);
-        PrivateKey privateKey = (PrivateKey) keyStore.getKey("rootCA", _privateKeyPass);
-        Certificate cert = keyStore.getCertificate("rootCA");
+        _keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+        _keyStore.load(keyStoreStream, _privateKeyPass);
+        PrivateKey privateKey = (PrivateKey) _keyStore.getKey("root", _privateKeyPass);
+        Certificate cert = _keyStore.getCertificate("root");
         _keyPair = new KeyPair(cert.getPublicKey(), privateKey);
 
         //
