@@ -42,8 +42,7 @@ public class ChatClient {
 
     Socket _socket = null;
     SecureRandom secureRandom;
-    KeyStore clientKeyStore;
-    KeyStore caKeyStore;
+    PublicKey CAPublicKey;
 //    KeyManagerFactory keyManagerFactory;
 //    TrustManagerFactory trustManagerFactory;
   
@@ -149,14 +148,15 @@ public class ChatClient {
             //
 
             FileInputStream inputStream = new FileInputStream(new File(keyStoreName));
-            KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
-            keystore.load(inputStream, keyStorePassword);
+            KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+            keyStore.load(inputStream, keyStorePassword);
+            CAPublicKey = keyStore.getCertificate("CA").getPublicKey();
 
-            Key key = keystore.getKey("client", keyStorePassword);
+            Key key = keyStore.getKey("client", keyStorePassword);
             PublicKey publicKey = null;
             if (key instanceof PrivateKey) {
                 // Get certificate of public key
-                Certificate cert = keystore.getCertificate("client");
+                Certificate cert = keyStore.getCertificate("client");
 
                 // Get public key
                 publicKey = cert.getPublicKey();
@@ -172,8 +172,11 @@ public class ChatClient {
             ObjectInputStream objIn = new ObjectInputStream(inStream);
             try {
                 Certificate cert = (X509Certificate) objIn.readObject();
+                cert.verify(CAPublicKey);
             } catch (ClassCastException caste) {
                 return CONNECTION_REFUSED;
+            } catch (Exception e) {
+                return BAD_HOST;
             }
 
             _socket = new Socket(serverHost, serverPort);
