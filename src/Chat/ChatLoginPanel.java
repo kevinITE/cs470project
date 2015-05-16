@@ -84,11 +84,11 @@ public class ChatLoginPanel extends JPanel {
 
         _loginNameField.setText("cs470");
         _passwordField.setText("123456");
-        _keyStoreNameField.setText("client1");
+        _keyStoreNameField.setText(".keystore");
         _keyStorePasswordField.setText("123456");
-        _caHostField.setText("localhost");
+        _caHostField.setText("139.179.92.107");
         _caPortField.setText("6666");
-        _serverHostField.setText("localhost");
+        _serverHostField.setText("139.179.92.107");
         _serverPortField.setText("7777");
 
         _errorLabel.setForeground(Color.red);

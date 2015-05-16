@@ -26,6 +26,7 @@ import java.net.*;
 //  Crypto
 import java.security.*;
 import java.security.cert.*;
+import java.security.cert.Certificate;
 import java.security.spec.*;
 import java.security.interfaces.*;
 import javax.crypto.*;
@@ -156,6 +157,32 @@ public class ChatClient {
             //  Send public key and get back certificate
             //  Use certificate to establish secure connection with server
             //
+
+            FileInputStream inputStream = new FileInputStream(new File("C:\\Users\\Emre\\"+keyStoreName));
+            KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+            keystore.load(inputStream, keyStorePassword);
+
+            Key key = keystore.getKey("client", keyStorePassword);
+            PublicKey publicKey = null;
+            if (key instanceof PrivateKey) {
+                // Get certificate of public key
+                Certificate cert = keystore.getCertificate("client");
+
+                // Get public key
+                publicKey = cert.getPublicKey();
+            }
+            Socket ca_socket = new Socket(caHost, caPort);
+            OutputStream socketOut = ca_socket.getOutputStream();
+            ObjectInputStream ois = new ObjectInputStream(ca_socket.getInputStream());
+            PrintWriter caPrintWriter = new PrintWriter(socketOut, true);
+            ObjectOutputStream oos = new ObjectOutputStream(socketOut);
+
+            caPrintWriter.println(_loginName);
+            caPrintWriter.println(password);
+            oos.writeObject(publicKey);
+
+            Certificate cert = (X509Certificate) ois.readObject();
+            System.out.println(cert.toString());
 
             _socket = new Socket(serverHost, serverPort);
             _out = new PrintWriter(_socket.getOutputStream(), true);
