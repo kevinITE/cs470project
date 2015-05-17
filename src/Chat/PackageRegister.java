@@ -1,8 +1,9 @@
 package Chat;
 
+import java.io.Serializable;
 import java.security.PublicKey;
 
-public class PackageRegister implements java.io.Serializable {
+public class PackageRegister implements Serializable {
     public String username;
     public PublicKey publicKey;
 
