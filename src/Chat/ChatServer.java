@@ -6,6 +6,7 @@
 package Chat;
 
 // Java General
+import java.security.cert.Certificate;
 import java.util.*;
 import java.math.BigInteger;
 
@@ -33,7 +34,7 @@ public class ChatServer {
     private int _port;
     private String _hostName = null;
     // Some hints: security related fields.
-    private String SERVER_KEYSTORE = "serverKeys";
+    private String SERVER_KEYSTORE = "C:\\Users\\Emre\\.keystore";
     private char[] SERVER_KEYSTORE_PASSWORD = "123456".toCharArray();
     private char[] SERVER_KEY_PASSWORD = "123456".toCharArray();
     private ServerSocket _serverSocket = null;
@@ -53,10 +54,16 @@ public class ChatServer {
             InetAddress serverAddr = InetAddress.getByName(null);
             _hostName = serverAddr.getHostName();
 
+            FileInputStream inputStream = new FileInputStream(new File(this.SERVER_KEYSTORE));
+            serverKeyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+            serverKeyStore.load(inputStream, this.SERVER_KEYSTORE_PASSWORD);
+
         } catch (UnknownHostException e) {
 
             _hostName = "0.0.0.0";
 
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -64,18 +71,18 @@ public class ChatServer {
 
         try {
 
-            if (args.length != 1) {
+            /*if (args.length != 1) {
 
                 //  Might need more arguments if extending for extra credit
                 System.out.println("Usage: java ChatServer portNum");
                 return;
 
-            } else {
+            } else {*/
 
-                int port = Integer.parseInt(args[0]);
+                int port = 7777; //Integer.parseInt(args[0]);
                 ChatServer server = new ChatServer(port);
                 server.run();
-            }
+            //}
 
         } catch (NumberFormatException e) {
 
@@ -106,6 +113,36 @@ public class ChatServer {
             while (true) {
 
                 Socket socket = _serverSocket.accept();
+
+                KeyPairGenerator kpg = KeyPairGenerator.getInstance("DiffieHellman");
+                kpg.initialize(512);
+                KeyPair kp = kpg.generateKeyPair();
+                KeyFactory kfactory = KeyFactory.getInstance("DiffieHellman");
+
+                DHPublicKeySpec kspec = kfactory.getKeySpec(kp.getPublic(), DHPublicKeySpec.class);
+
+                Certificate cert = serverKeyStore.getCertificate("server");
+                PackageServerExchange serverExchange = new PackageServerExchange(cert, kspec, kp.getPrivate());
+
+                if(socket!=null) {
+                    ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
+                    oos.writeObject(serverExchange);
+                }
+
+                PackageClientExchange clientExchange = null;
+                if(socket!=null) {
+                    ObjectInputStream objIn = new ObjectInputStream(socket.getInputStream());
+                    clientExchange = (PackageClientExchange) objIn.readObject();
+                }
+
+                SecretKey secretKey = null;
+                if(clientExchange != null) {
+                    KeyAgreement ka = KeyAgreement.getInstance("DH");
+                    ka.init(kp.getPrivate());
+                    ka.doPhase(clientExchange.getClientCertificate().getPublicKey(), true);
+                    secretKey = ka.generateSecret("AES");
+                }
+
                 ClientRecord clientRecord = new ClientRecord(socket);
                 _clients.put(new Integer(_clientID++), clientRecord);
                 ChatServerThread thread = new ChatServerThread(this, socket);
