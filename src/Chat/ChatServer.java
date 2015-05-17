@@ -27,9 +27,8 @@ import javax.security.auth.x500.*;
 
 public class ChatServer {
 
-    private Hashtable _clients;
-//      private Hashtable _clientsRoomA;
-//      private Hashtable _clientsRoomB;
+    private Map<String, HashMap<Integer, ClientRecord>> _clients;
+    private Map<String, SecretKey> _roomKeys;
     private int _clientID = 0;
     private int _port;
     private String _hostName = null;
@@ -44,7 +43,7 @@ public class ChatServer {
     public ChatServer(int port) {
 
         try {
-            _clients = new Hashtable();
+            _clients = new HashMap<String, HashMap<Integer, ClientRecord>>();
             _serverSocket = null;
             _clientID = -1;
             _port = port;
@@ -96,6 +95,9 @@ public class ChatServer {
             System.out.println("ChatServer is running on "
                     + _hostName + " port " + _port);
 
+            KeyGenerator roomKeyGenerator = KeyGenerator.getInstance("AES");
+            roomKeyGenerator.init(128);
+
             while (true) {
 
                 Socket socket = _serverSocket.accept();
@@ -140,11 +142,39 @@ public class ChatServer {
                     ka.doPhase(DHClientPublicKey, true);
                     SecretKey secretKey = ka.generateSecret("AES");
 
-                    System.out.println("Key exchange completed: " + secretKey.getEncoded());
+//                    System.out.println("Key exchange completed: " + Arrays.toString(DHClientPublicKey.getEncoded()));
+//                    System.out.println("Key exchange completed: " + Arrays.toString(DHServerPublicKey.getEncoded()));
+                    System.out.println("Key exchange completed: " + Arrays.toString(secretKey.getEncoded()));
 
-                    ClientRecord clientRecord = new ClientRecord(socket);
-                    _clients.put(new Integer(_clientID++), clientRecord);
-                    ChatServerThread thread = new ChatServerThread(this, socket);
+                    // initialize symmetric ciphers
+                    Cipher enCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+                    Cipher deCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+                    enCipher.init(Cipher.ENCRYPT_MODE, secretKey);
+                    deCipher.init(Cipher.DECRYPT_MODE, secretKey);
+
+                    // receive join room request
+                    SealedObject joinRoomRequest = (SealedObject) in.readObject();
+                    String room = (String) joinRoomRequest.getObject(deCipher);
+
+                    ClientRecord clientRecord = new ClientRecord(socket, secretKey);
+                    HashMap<Integer, ClientRecord> roomClients = _clients.get(room);
+                    SecretKey roomKey;
+                    if(roomClients == null) {
+                        HashMap<Integer, ClientRecord> newMap = new HashMap<Integer, ClientRecord>();
+                        newMap.put(_clientID++, clientRecord);
+                        _clients.put(room, newMap);
+                        roomKey = roomKeyGenerator.generateKey();
+                        _roomKeys.put(room, roomKey);
+                    }
+                    else {
+                        roomClients.put(_clientID++, clientRecord);
+                        roomKey = _roomKeys.get(room);
+                    }
+
+                    // send join room reply
+                    out.writeObject(new SealedObject(roomKey, enCipher));
+
+                    ChatServerThread thread = new ChatServerThread(this, socket, room);
                     thread.start();
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -167,8 +197,7 @@ public class ChatServer {
         }
     }
 
-    public Hashtable getClientRecords() {
-
-        return _clients;
+    public Map<Integer, ClientRecord> getRoomClientRecords(String room) {
+        return _clients.get(room);
     }
 }

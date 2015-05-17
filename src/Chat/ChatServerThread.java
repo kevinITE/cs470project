@@ -27,14 +27,14 @@ public class ChatServerThread extends Thread {
 
     private Socket _socket = null;
     private ChatServer _server = null;
-    private Hashtable _records = null;
+    private Map<Integer, ClientRecord> _records = null;
 
-    public ChatServerThread(ChatServer server, Socket socket) {
+    public ChatServerThread(ChatServer server, Socket socket, String room) {
 
         super("ChatServerThread");
         _server = server;
         _socket = socket;
-        _records = server.getClientRecords();
+        _records = server.getRoomClientRecords(room);
     }
 
     public void run() {
@@ -49,19 +49,12 @@ public class ChatServerThread extends Thread {
 
             while ((receivedMsg = in.readLine()) != null) {
 
-                Enumeration theClients = _records.elements();
-
-                while (theClients.hasMoreElements()) {
-
-                    ClientRecord c = (ClientRecord) theClients.nextElement();
-
-
+                for(ClientRecord c : _records.values()) {
                     Socket socket = c.getClientSocket();
-
                     PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
                     out.println(receivedMsg);
-
                 }
+
             }
 
             _socket.shutdownInput();

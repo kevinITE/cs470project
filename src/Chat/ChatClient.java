@@ -30,6 +30,7 @@ import java.net.*;
 import java.security.*;
 import java.security.cert.*;
 import java.security.cert.Certificate;
+import java.util.Arrays;
 
 public class ChatClient {
 
@@ -48,10 +49,10 @@ public class ChatClient {
     JFrame _appFrame;
 
     Socket _socket = null;
-    SecureRandom secureRandom;
     PublicKey CAPublicKey;
     Certificate clientCert;
     PrivateKey RSAPrivateKey;
+    SecretKey roomKey;
 
     //  ChatClient Constructor
     //
@@ -233,7 +234,26 @@ public class ChatClient {
             ka.doPhase(DHServerPublicKey, true);
             SecretKey secretKey = ka.generateSecret("AES");
 
-            System.out.println("Key exchange completed: " + secretKey.getEncoded());
+//            System.out.println("Key exchange completed: " + Arrays.toString(DHClientPublicKey.getEncoded()));
+//            System.out.println("Key exchange completed: " + Arrays.toString(DHServerPublicKey.getEncoded()));
+            System.out.println("Key exchange completed: " + Arrays.toString(secretKey.getEncoded()));
+
+            // initialize symmetric ciphers
+            Cipher enCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            Cipher deCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            enCipher.init(Cipher.ENCRYPT_MODE, secretKey);
+            deCipher.init(Cipher.DECRYPT_MODE, secretKey);
+
+            // send join room request
+            out.writeObject(new SealedObject(room, enCipher));
+
+            // receive join room reply
+            SealedObject joinRoomReply = (SealedObject) in.readObject();
+            roomKey = (SecretKey) joinRoomReply.getObject(deCipher);
+
+            if(roomKey == null) {
+                return CONNECTION_REFUSED;
+            }
 
             _out = new PrintWriter(_socket.getOutputStream(), true);
 
