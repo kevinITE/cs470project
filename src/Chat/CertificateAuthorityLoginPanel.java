@@ -56,7 +56,7 @@ public class CertificateAuthorityLoginPanel extends JPanel {
 
         _keystoreFileNameField = new JTextField();
         addField(gridBag, _keystoreFileNameField, 2, 1, 1, 1);
-        _keystoreFileNameField.setText("/home/yigit/Chat/caks");
+        _keystoreFileNameField.setText("/home/yigit/Chat/ks_CA");
 
         _privateKeyPassField = new JPasswordField();
         _privateKeyPassField.setEchoChar('*');

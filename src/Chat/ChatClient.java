@@ -10,6 +10,10 @@ package Chat;
 //  AWT/Swing
 import java.awt.*;
 import java.awt.event.*;
+import javax.crypto.KeyAgreement;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.DHParameterSpec;
+import javax.crypto.spec.DHPublicKeySpec;
 import javax.swing.*;
 
 //  Java
@@ -43,9 +47,9 @@ public class ChatClient {
     Socket _socket = null;
     SecureRandom secureRandom;
     PublicKey CAPublicKey;
-//    KeyManagerFactory keyManagerFactory;
-//    TrustManagerFactory trustManagerFactory;
-  
+    Certificate clientCert;
+    PrivateKey RSAPrivateKey;
+
     //  ChatClient Constructor
     //
     //  empty, as you can see.
@@ -138,48 +142,94 @@ public class ChatClient {
 
             _loginName = loginName;
 
-
-            //
-            //  Read the client keystore
-            //         (for its private/public keys)
-            //  Establish secure connection to the CA
-            //  Send public key and get back certificate
-            //  Use certificate to establish secure connection with server
-            //
-
+            // load client keystore
             FileInputStream inputStream = new FileInputStream(new File(keyStoreName));
             KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
             keyStore.load(inputStream, keyStorePassword);
-            CAPublicKey = keyStore.getCertificate("CA").getPublicKey();
+            CAPublicKey = keyStore.getCertificate("ca").getPublicKey();
 
-            Key key = keyStore.getKey("client", keyStorePassword);
-            PublicKey publicKey = null;
-            if (key instanceof PrivateKey) {
-                // Get certificate of public key
-                Certificate cert = keyStore.getCertificate("client");
+            if(!keyStore.isCertificateEntry(_loginName)) {
+                RSAPrivateKey = (PrivateKey) keyStore.getKey("client", keyStorePassword);
+                clientCert = keyStore.getCertificate("client");
+                PublicKey RSAPublicKey = clientCert.getPublicKey();
 
-                // Get public key
-                publicKey = cert.getPublicKey();
+                // establish connection to CA
+                Socket ca_socket = new Socket(caHost, caPort);
+                OutputStream outStream = ca_socket.getOutputStream();
+                InputStream inStream = ca_socket.getInputStream();
+                ObjectOutputStream out = new ObjectOutputStream(outStream);
+                ObjectInputStream in = new ObjectInputStream(inStream);
+
+                out.writeObject(new PackageRegister(_loginName, RSAPublicKey));
+
+                try {
+                    clientCert = (X509Certificate) in.readObject();
+                    clientCert.verify(CAPublicKey);
+                } catch (ClassCastException caste) {
+                    return CONNECTION_REFUSED;
+                } catch (Exception e) {
+                    return BAD_HOST;
+                }
+
+                out.close();
+                in.close();
+
+                // save the certificate
+                keyStore.setCertificateEntry(_loginName, clientCert);
+                FileOutputStream keyStoreStream = new FileOutputStream(new File(keyStoreName));
+                keyStore.store(keyStoreStream, keyStorePassword);
+            }
+            else {
+                RSAPrivateKey = (PrivateKey) keyStore.getKey(_loginName, keyStorePassword);
+                clientCert = keyStore.getCertificate(_loginName);
             }
 
-            Socket ca_socket = new Socket(caHost, caPort);
-            InputStream inStream = ca_socket.getInputStream();
-            OutputStream outStream = ca_socket.getOutputStream();
+            // establish connection to chat server
+            _socket = new Socket(serverHost, serverPort);
+            OutputStream outStream = _socket.getOutputStream();
+            InputStream inStream = _socket.getInputStream();
+            ObjectOutputStream out = new ObjectOutputStream(outStream);
+            ObjectInputStream in = new ObjectInputStream(inStream);
 
-            ObjectOutputStream objOut = new ObjectOutputStream(outStream);
-            objOut.writeObject(new PackageRegister(_loginName, publicKey));
+            System.out.println("Connection established to the chat server");
 
-            ObjectInputStream objIn = new ObjectInputStream(inStream);
-            try {
-                Certificate cert = (X509Certificate) objIn.readObject();
-                cert.verify(CAPublicKey);
-            } catch (ClassCastException caste) {
-                return CONNECTION_REFUSED;
-            } catch (Exception e) {
+            // receive server key exchange
+            PackageServerExchange serverExchange = (PackageServerExchange) in.readObject();
+            DHPublicKeySpec DHServerPublicKey = serverExchange.getDHServerPart();
+            Certificate serverCert = serverExchange.getServerCertificate();
+
+            // verify
+            serverCert.verify(CAPublicKey);
+            if(!serverExchange.verify()) {
                 return BAD_HOST;
             }
 
-            _socket = new Socket(serverHost, serverPort);
+            System.out.println("Server key exchange verified");
+
+            // generate DH key part
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("DiffieHellman");
+            DHParameterSpec param = new DHParameterSpec(DHServerPublicKey.getP(), DHServerPublicKey.getG());
+            kpg.initialize(param);
+            KeyPair kp = kpg.generateKeyPair();
+            KeyFactory kfactory = KeyFactory.getInstance("DiffieHellman");
+            DHPublicKeySpec DHClientPublicKey = (DHPublicKeySpec) kfactory.getKeySpec(kp.getPublic(), DHPublicKeySpec.class);
+
+            // create and send client key exchange
+            PackageClientExchange clientExchange = new PackageClientExchange(clientCert, serverCert, DHClientPublicKey, RSAPrivateKey, serverExchange);
+            out.writeObject(clientExchange);
+
+            System.out.println("Sent client key exchange");
+
+            System.out.println("Calculating shared secret");
+
+            // calculate shared secret
+            KeyAgreement ka = KeyAgreement.getInstance("DH");
+            ka.init(kp.getPrivate());
+            ka.doPhase(clientExchange.getClientCertificate().getPublicKey(), true);
+            SecretKey secretKey = ka.generateSecret("AES");
+
+            System.out.println("Key exchange completed: " + secretKey);
+
             _out = new PrintWriter(_socket.getOutputStream(), true);
 
             _in = new BufferedReader(new InputStreamReader(

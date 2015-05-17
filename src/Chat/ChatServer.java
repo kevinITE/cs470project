@@ -33,20 +33,17 @@ public class ChatServer {
     private int _clientID = 0;
     private int _port;
     private String _hostName = null;
-    // Some hints: security related fields.
-    private String SERVER_KEYSTORE = "C:\\Users\\Emre\\.keystore";
+    private String SERVER_KEYSTORE = "";
     private char[] SERVER_KEYSTORE_PASSWORD = "123456".toCharArray();
     private char[] SERVER_KEY_PASSWORD = "123456".toCharArray();
     private ServerSocket _serverSocket = null;
     private SecureRandom secureRandom;
     private KeyStore serverKeyStore;
-//    private KeyManagerFactory keyManagerFactory;
-//    private TrustManagerFactory trustManagerFactory;
-  
+    PublicKey CAPublicKey;
+
     public ChatServer(int port) {
 
         try {
-
             _clients = new Hashtable();
             _serverSocket = null;
             _clientID = -1;
@@ -57,6 +54,7 @@ public class ChatServer {
             FileInputStream inputStream = new FileInputStream(new File(this.SERVER_KEYSTORE));
             serverKeyStore = KeyStore.getInstance(KeyStore.getDefaultType());
             serverKeyStore.load(inputStream, this.SERVER_KEYSTORE_PASSWORD);
+            CAPublicKey = serverKeyStore.getCertificate("ca").getPublicKey();
 
         } catch (UnknownHostException e) {
 
@@ -71,27 +69,15 @@ public class ChatServer {
 
         try {
 
-            /*if (args.length != 1) {
-
-                //  Might need more arguments if extending for extra credit
-                System.out.println("Usage: java ChatServer portNum");
-                return;
-
-            } else {*/
-
-                int port = 7777; //Integer.parseInt(args[0]);
-                ChatServer server = new ChatServer(port);
-                server.run();
-            //}
+            int port = 7777;
+            ChatServer server = new ChatServer(port);
+            server.run();
 
         } catch (NumberFormatException e) {
-
-            System.out.println("Useage: java ChatServer host portNum");
+            System.out.println("Usage: java ChatServer host portNum");
             e.printStackTrace();
-            return;
 
         } catch (Exception e) {
-
             System.out.println("ChatServer error: " + e.getMessage());
             e.printStackTrace();
         }
@@ -114,39 +100,53 @@ public class ChatServer {
 
                 Socket socket = _serverSocket.accept();
 
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("DiffieHellman");
-                kpg.initialize(512);
-                KeyPair kp = kpg.generateKeyPair();
-                KeyFactory kfactory = KeyFactory.getInstance("DiffieHellman");
+                try {
+                    ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+                    ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 
-                DHPublicKeySpec kspec = kfactory.getKeySpec(kp.getPublic(), DHPublicKeySpec.class);
+                    // generate DH key part
+                    KeyPairGenerator kpg = KeyPairGenerator.getInstance("DiffieHellman");
+                    kpg.initialize(512);
+                    KeyPair kp = kpg.generateKeyPair();
+                    KeyFactory kfactory = KeyFactory.getInstance("DiffieHellman");
+                    DHPublicKeySpec DHServerPublicKey = (DHPublicKeySpec) kfactory.getKeySpec(kp.getPublic(), DHPublicKeySpec.class);
 
-                Certificate cert = serverKeyStore.getCertificate("server");
-                PackageServerExchange serverExchange = new PackageServerExchange(cert, kspec, kp.getPrivate());
+                    // create key exchange message
+                    Certificate serverCert = serverKeyStore.getCertificate("server");
+                    PrivateKey RSAPrivateKey = (PrivateKey) serverKeyStore.getKey("server", SERVER_KEY_PASSWORD);
+                    PackageServerExchange serverExchange = new PackageServerExchange(serverCert, DHServerPublicKey, RSAPrivateKey);
 
-                if(socket!=null) {
-                    ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
-                    oos.writeObject(serverExchange);
-                }
+                    // send server key exchange
+                    out.writeObject(serverExchange);
 
-                PackageClientExchange clientExchange = null;
-                if(socket!=null) {
-                    ObjectInputStream objIn = new ObjectInputStream(socket.getInputStream());
-                    clientExchange = (PackageClientExchange) objIn.readObject();
-                }
+                    // receive client key exchange
+                    PackageClientExchange clientExchange = (PackageClientExchange) in.readObject();
 
-                SecretKey secretKey = null;
-                if(clientExchange != null) {
+                    // verify
+                    if(clientExchange == null || !clientExchange.verify()) {
+                        System.out.println("Key exchange failed");
+                        break;
+                    }
+                    clientExchange.getClientCertificate().verify(CAPublicKey);
+
+                    System.out.println("Calculating shared secret");
+
+                    // calculate shared secret
                     KeyAgreement ka = KeyAgreement.getInstance("DH");
                     ka.init(kp.getPrivate());
                     ka.doPhase(clientExchange.getClientCertificate().getPublicKey(), true);
-                    secretKey = ka.generateSecret("AES");
-                }
+                    SecretKey secretKey = ka.generateSecret("AES");
 
-                ClientRecord clientRecord = new ClientRecord(socket);
-                _clients.put(new Integer(_clientID++), clientRecord);
-                ChatServerThread thread = new ChatServerThread(this, socket);
-                thread.start();
+                    System.out.println("Key exchange completed: " + secretKey);
+
+                    ClientRecord clientRecord = new ClientRecord(socket);
+                    _clients.put(new Integer(_clientID++), clientRecord);
+                    ChatServerThread thread = new ChatServerThread(this, socket);
+                    thread.start();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    System.out.println("Client connection failed");
+                }
             }
 
             //_serverSocket.close();

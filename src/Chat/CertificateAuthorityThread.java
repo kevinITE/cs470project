@@ -59,11 +59,12 @@ public class CertificateAuthorityThread extends Thread {
                 try {
                     Socket socket = _serverSocket.accept();
 
-                    InputStream inStream = socket.getInputStream();
                     OutputStream outStream = socket.getOutputStream();
+                    InputStream inStream = socket.getInputStream();
+                    ObjectOutputStream out = new ObjectOutputStream(outStream);
+                    ObjectInputStream in = new ObjectInputStream(inStream);
 
-                    ObjectInputStream objIn = new ObjectInputStream(inStream);
-                    PackageRegister packageRegister = (PackageRegister) objIn.readObject();
+                    PackageRegister packageRegister = (PackageRegister) in.readObject();
 
                     if(packageRegister != null) {
                         _outputArea.append("Registration request: " + packageRegister.username + "\n");
@@ -86,8 +87,8 @@ public class CertificateAuthorityThread extends Thread {
                         }
 
                         // send certificate to the client
-                        ObjectOutputStream objOut = new ObjectOutputStream(outStream);
-                        objOut.writeObject(cert);
+
+                        out.writeObject(cert);
                     }
                 } catch (Exception e) {
                     System.out.println("Client connection error: " + e.getMessage());
