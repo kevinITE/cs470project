@@ -10,8 +10,11 @@ package Chat;
 //  AWT/Swing
 import java.awt.*;
 import java.awt.event.*;
+import javax.crypto.Cipher;
 import javax.crypto.KeyAgreement;
+import javax.crypto.SealedObject;
 import javax.crypto.SecretKey;
+import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.DHPublicKeySpec;
 import javax.swing.*;
@@ -180,7 +183,7 @@ public class ChatClient {
                 keyStore.store(keyStoreStream, keyStorePassword);
             }
             else {
-                RSAPrivateKey = (PrivateKey) keyStore.getKey(_loginName, keyStorePassword);
+                RSAPrivateKey = (PrivateKey) keyStore.getKey("client", keyStorePassword);
                 clientCert = keyStore.getCertificate(_loginName);
             }
 
@@ -195,7 +198,8 @@ public class ChatClient {
 
             // receive server key exchange
             PackageServerExchange serverExchange = (PackageServerExchange) in.readObject();
-            DHPublicKeySpec DHServerPublicKey = serverExchange.getDHServerPart();
+            DHPublicKeySpec DHServerPublicKeyPart = serverExchange.getDHServerPart();
+            DHPublicKey DHServerPublicKey = serverExchange.getDHServerKey();
             Certificate serverCert = serverExchange.getServerCertificate();
 
             // verify
@@ -208,14 +212,15 @@ public class ChatClient {
 
             // generate DH key part
             KeyPairGenerator kpg = KeyPairGenerator.getInstance("DiffieHellman");
-            DHParameterSpec param = new DHParameterSpec(DHServerPublicKey.getP(), DHServerPublicKey.getG());
+            DHParameterSpec param = new DHParameterSpec(DHServerPublicKeyPart.getP(), DHServerPublicKeyPart.getG());
             kpg.initialize(param);
             KeyPair kp = kpg.generateKeyPair();
             KeyFactory kfactory = KeyFactory.getInstance("DiffieHellman");
-            DHPublicKeySpec DHClientPublicKey = (DHPublicKeySpec) kfactory.getKeySpec(kp.getPublic(), DHPublicKeySpec.class);
+            DHPublicKeySpec DHClientPublicKeySpec = (DHPublicKeySpec) kfactory.getKeySpec(kp.getPublic(), DHPublicKeySpec.class);
+            PublicKey DHClientPublicKey = kp.getPublic();
 
             // create and send client key exchange
-            PackageClientExchange clientExchange = new PackageClientExchange(clientCert, serverCert, DHClientPublicKey, RSAPrivateKey, serverExchange);
+            PackageClientExchange clientExchange = new PackageClientExchange(clientCert, serverCert, kp.getPublic(), RSAPrivateKey, serverExchange);
             out.writeObject(clientExchange);
 
             System.out.println("Sent client key exchange");
@@ -225,10 +230,10 @@ public class ChatClient {
             // calculate shared secret
             KeyAgreement ka = KeyAgreement.getInstance("DH");
             ka.init(kp.getPrivate());
-            ka.doPhase(clientExchange.getClientCertificate().getPublicKey(), true);
+            ka.doPhase(DHServerPublicKey, true);
             SecretKey secretKey = ka.generateSecret("AES");
 
-            System.out.println("Key exchange completed: " + secretKey);
+            System.out.println("Key exchange completed: " + secretKey.getEncoded());
 
             _out = new PrintWriter(_socket.getOutputStream(), true);
 

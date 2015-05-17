@@ -33,7 +33,7 @@ public class ChatServer {
     private int _clientID = 0;
     private int _port;
     private String _hostName = null;
-    private String SERVER_KEYSTORE = "";
+    private String SERVER_KEYSTORE = "/home/yigit/Chat/ks_server";
     private char[] SERVER_KEYSTORE_PASSWORD = "123456".toCharArray();
     private char[] SERVER_KEY_PASSWORD = "123456".toCharArray();
     private ServerSocket _serverSocket = null;
@@ -69,7 +69,7 @@ public class ChatServer {
 
         try {
 
-            int port = 7777;
+            int port = 7779;
             ChatServer server = new ChatServer(port);
             server.run();
 
@@ -109,12 +109,13 @@ public class ChatServer {
                     kpg.initialize(512);
                     KeyPair kp = kpg.generateKeyPair();
                     KeyFactory kfactory = KeyFactory.getInstance("DiffieHellman");
-                    DHPublicKeySpec DHServerPublicKey = (DHPublicKeySpec) kfactory.getKeySpec(kp.getPublic(), DHPublicKeySpec.class);
+                    DHPublicKeySpec DHServerPublicKeySpec = (DHPublicKeySpec) kfactory.getKeySpec(kp.getPublic(), DHPublicKeySpec.class);
+                    PublicKey DHServerPublicKey = kp.getPublic();
 
                     // create key exchange message
                     Certificate serverCert = serverKeyStore.getCertificate("server");
                     PrivateKey RSAPrivateKey = (PrivateKey) serverKeyStore.getKey("server", SERVER_KEY_PASSWORD);
-                    PackageServerExchange serverExchange = new PackageServerExchange(serverCert, DHServerPublicKey, RSAPrivateKey);
+                    PackageServerExchange serverExchange = new PackageServerExchange(serverCert, DHServerPublicKeySpec, DHServerPublicKey, RSAPrivateKey);
 
                     // send server key exchange
                     out.writeObject(serverExchange);
@@ -129,15 +130,17 @@ public class ChatServer {
                     }
                     clientExchange.getClientCertificate().verify(CAPublicKey);
 
+                    PublicKey DHClientPublicKey = clientExchange.getDHClientPart(RSAPrivateKey, DHServerPublicKeySpec.getP(), DHServerPublicKeySpec.getG());
+
                     System.out.println("Calculating shared secret");
 
                     // calculate shared secret
                     KeyAgreement ka = KeyAgreement.getInstance("DH");
                     ka.init(kp.getPrivate());
-                    ka.doPhase(clientExchange.getClientCertificate().getPublicKey(), true);
+                    ka.doPhase(DHClientPublicKey, true);
                     SecretKey secretKey = ka.generateSecret("AES");
 
-                    System.out.println("Key exchange completed: " + secretKey);
+                    System.out.println("Key exchange completed: " + secretKey.getEncoded());
 
                     ClientRecord clientRecord = new ClientRecord(socket);
                     _clients.put(new Integer(_clientID++), clientRecord);

@@ -81,14 +81,14 @@ public class ChatLoginPanel extends JPanel {
 
         // just for testing purpose
 
-        _loginNameField.setText("cs470");
+        _loginNameField.setText("yigitemre");
         _roomField.setText("general");
         _keyStoreNameField.setText("/home/yigit/Chat/ks_client");
         _keyStorePasswordField.setText("123456");
         _caHostField.setText("localhost");
         _caPortField.setText("6666");
         _serverHostField.setText("localhost");
-        _serverPortField.setText("7777");
+        _serverPortField.setText("7779");
 
         _errorLabel.setForeground(Color.red);
 

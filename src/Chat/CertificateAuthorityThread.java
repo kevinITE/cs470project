@@ -73,7 +73,8 @@ public class CertificateAuthorityThread extends Thread {
                         X509Certificate cert = null;
 
                         if(existingCert == null) {
-                            cert = X509CertificateGenerator.generateCertificate("CN="+ packageRegister.username, _ca._keyPair, 365, "SHA256withRSA");
+                            cert = X509CertificateGenerator.generateCertificate("CN="+ packageRegister.username,
+                                    _ca._keyPair.getPrivate(), packageRegister.publicKey, 365, "SHA256withRSA");
 
                             // save the certificate
                             _ca._keyStore.setCertificateEntry(packageRegister.username, cert);

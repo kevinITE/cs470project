@@ -1,5 +1,6 @@
 package Chat;
 
+import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.DHPublicKeySpec;
 import java.io.IOException;
 import java.io.Serializable;
@@ -23,12 +24,14 @@ public class PackageServerExchange implements Serializable {
      * Server's Diffie-Hellman key part, signed with server's long-term RSA private key paired with its certificate.
      */
     private SignedObject signedDHServerPart;
+    private SignedObject signedDHServerKey;
 
-    public PackageServerExchange(Certificate serverCert, DHPublicKeySpec DHServerPublicKey, PrivateKey signingKey) throws NoSuchAlgorithmException, InvalidKeyException, IOException, SignatureException {
+    public PackageServerExchange(Certificate serverCert, DHPublicKeySpec DHServerPublicKeySpec, PublicKey DHServerPublicKey, PrivateKey signingKey) throws NoSuchAlgorithmException, InvalidKeyException, IOException, SignatureException {
         this.serverCert = serverCert;
-        Signature signingEngine = Signature.getInstance(signingKey.getAlgorithm());
-        SerializableDHPublicKey unsignedDHServerPart = new SerializableDHPublicKey(DHServerPublicKey);
+        Signature signingEngine = Signature.getInstance("SHA256withRSA");
+        SerializableDHPublicKey unsignedDHServerPart = new SerializableDHPublicKey(DHServerPublicKeySpec);
         this.signedDHServerPart = new SignedObject(unsignedDHServerPart, signingKey, signingEngine);
+        this.signedDHServerKey = new SignedObject(DHServerPublicKey, signingKey, signingEngine);
 
     }
 
@@ -37,11 +40,17 @@ public class PackageServerExchange implements Serializable {
         return serializableKey.getDHPublicKeySpec();
     }
 
+    public DHPublicKey getDHServerKey() throws IOException, ClassNotFoundException {
+        return (DHPublicKey) this.signedDHServerKey.getObject();
+    }
+
     public boolean verify() {
         try {
             PublicKey verificationKey = this.serverCert.getPublicKey();
-            Signature signingEngine = Signature.getInstance(verificationKey.getAlgorithm());
-            return this.signedDHServerPart.verify(verificationKey, signingEngine);
+            Signature signingEngine = Signature.getInstance("SHA256withRSA");
+            boolean verifiedPart = this.signedDHServerPart.verify(verificationKey, signingEngine);
+            boolean verifiedKey = this.signedDHServerKey.verify(verificationKey, signingEngine);
+            return verifiedPart && verifiedKey;
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         } catch (SignatureException e) {

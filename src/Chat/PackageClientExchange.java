@@ -1,11 +1,15 @@
 package Chat;
 
 import javax.crypto.*;
+import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.DHPublicKeySpec;
 import java.io.IOException;
 import java.io.Serializable;
+import java.math.BigInteger;
 import java.security.*;
 import java.security.cert.Certificate;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 
 /**
  * Client creates an instance of this class and sends it to the server in the seconds step of key exchange.
@@ -28,33 +32,34 @@ public class PackageClientExchange implements Serializable {
     /**
      * Client's Diffie-Hellman key part, encrypted with the server's RSA public key in its certificate.
      */
-    private SealedObject sealedDHClientPart;
+    private byte[] encryptedDHClientPart;
 
 
-    public PackageClientExchange(Certificate clientCert, Certificate serverCert, DHPublicKeySpec DHClientPublicKey,
-                                 PrivateKey signingKey, PackageServerExchange previousPackage) throws NoSuchAlgorithmException, InvalidKeyException, IOException, SignatureException, NoSuchPaddingException, IllegalBlockSizeException {
+    public PackageClientExchange(Certificate clientCert, Certificate serverCert, PublicKey DHClientPublicKey,
+                                 PrivateKey signingKey, PackageServerExchange previousPackage) throws NoSuchAlgorithmException, InvalidKeyException, IOException, SignatureException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException {
         this.clientCert = clientCert;
 
-        Signature signingEngine = Signature.getInstance(signingKey.getAlgorithm());
+        Signature signingEngine = Signature.getInstance("SHA256withRSA");
         this.signedVerification = new SignedObject(previousPackage, signingKey, signingEngine);
 
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher.init(Cipher.ENCRYPT_MODE, serverCert);
-        PackageServerExchange.SerializableDHPublicKey plainDHClientPart = new PackageServerExchange.SerializableDHPublicKey(DHClientPublicKey);
-        this.sealedDHClientPart = new SealedObject(plainDHClientPart, cipher);
+        this.encryptedDHClientPart = cipher.doFinal(DHClientPublicKey.getEncoded());
     }
 
-    public DHPublicKeySpec getDHClientPart(PrivateKey privateKey) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException, ClassNotFoundException, BadPaddingException, IllegalBlockSizeException, IOException {
+    public PublicKey getDHClientPart(PrivateKey privateKey, BigInteger p, BigInteger g) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException, ClassNotFoundException, BadPaddingException, IllegalBlockSizeException, IOException, InvalidKeySpecException {
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher.init(Cipher.DECRYPT_MODE, privateKey);
-        PackageServerExchange.SerializableDHPublicKey serializableDHClientPart = (PackageServerExchange.SerializableDHPublicKey) this.sealedDHClientPart.getObject(cipher);
-        return serializableDHClientPart.getDHPublicKeySpec();
+        KeyFactory keyFac = KeyFactory.getInstance("DH");
+        byte[] barray = cipher.doFinal(this.encryptedDHClientPart);
+        X509EncodedKeySpec x509KeySpec = new X509EncodedKeySpec(barray);
+        return keyFac.generatePublic(x509KeySpec);
     }
 
     public boolean verify() {
         try {
             PublicKey verificationKey = this.clientCert.getPublicKey();
-            Signature signingEngine = Signature.getInstance(verificationKey.getAlgorithm());
+            Signature signingEngine = Signature.getInstance("SHA256withRSA");
             return this.signedVerification.verify(verificationKey, signingEngine);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
