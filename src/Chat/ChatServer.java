@@ -19,15 +19,16 @@ import java.security.cert.Certificate;
 
 public class ChatServer {
 
+    String SERVER_KEYSTORE = "keystores/ks_server";
+    char[] SERVER_KEYSTORE_PASSWORD = "123456".toCharArray();
+    char[] SERVER_KEY_PASSWORD = "123456".toCharArray();
+
     private int _port;
     private String _hostName = null;
     private ServerSocket _serverSocket = null;
     int clientID = 0;
     Map<String, HashMap<Integer, ClientRecord>> clients;
     Map<String, SecretKey> roomKeys;
-    String SERVER_KEYSTORE = "keystores/ks_server";
-    char[] SERVER_KEYSTORE_PASSWORD = "123456".toCharArray();
-    char[] SERVER_KEY_PASSWORD = "123456".toCharArray();
     KeyStore keyStore;
     PublicKey CAPublicKey;
     KeyGenerator roomKeyGenerator;
