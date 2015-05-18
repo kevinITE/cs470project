@@ -5,40 +5,20 @@
 //
 package Chat;
 
-//  AWT/Swing
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
-
-//  Java
 import java.io.*;
-import java.math.BigInteger;
-
-// socket
-import java.net.*;
-import java.io.*;
-import java.net.*;
-
-//  Crypto
 import java.security.*;
 import java.security.cert.*;
 import java.security.cert.Certificate;
-import java.security.spec.*;
-import java.security.interfaces.*;
-import javax.crypto.*;
-import javax.crypto.spec.*;
-import javax.crypto.interfaces.*;
-import javax.security.auth.x500.*;
 
 public class CertificateAuthority {
-    //  Failure codes
 
     public static final int SUCCESS = 0;
     public static final int KEYSTORE_FILE_NOT_FOUND = 1;
-//    public static final int PERMISSIONS_FILE_NOT_FOUND = 2;
-//    public static final int PERMISSIONS_FILE_TAMPERED = 3;
     public static final int ERROR = 4;
-    //  The GUI
+    private int _portNum;
     CertificateAuthorityLoginPanel _panel;
     CertificateAuthorityActivityPanel _activityPanel;
     CardLayout _layout;
@@ -48,13 +28,8 @@ public class CertificateAuthority {
     String _ksFileName;
     char[] _privateKeyPass;
     KeyPair _keyPair;
-    //  Port number to listen on
-    private int _portNum;
 
-    //  Data structures to hold the authentication
-    //  information read from the file
-    //  ............
-    //  ............
+
     public CertificateAuthority() throws Exception {
 
         _panel = null;
@@ -120,20 +95,13 @@ public class CertificateAuthority {
     //  Start up the CA server
     //
     public int startup(String _ksFileName,
-            char[] _privateKeyPass,
-         /*   String _permissionsFileName,
-            char[] _permissionsFilePass,*/
-            int _caPort) throws UnrecoverableKeyException, CertificateException, NoSuchAlgorithmException, KeyStoreException, IOException {
+                       char[] _privateKeyPass,
+                       int _caPort) throws UnrecoverableKeyException, CertificateException, NoSuchAlgorithmException, KeyStoreException, IOException {
+
         _portNum = _caPort;
 
-        //
-        //  Decrypt the permissions file
-        //  Read the CA keystore (i.e. its private key)
-        //  Failure codes to return are defined on the top
-        //
-
-        this._ksFileName =_ksFileName;
-        this._privateKeyPass =_privateKeyPass;
+        this._ksFileName = _ksFileName;
+        this._privateKeyPass = _privateKeyPass;
         FileInputStream keyStoreStream = new FileInputStream(new File(_ksFileName));
         _keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
         _keyStore.load(keyStoreStream, _privateKeyPass);
@@ -141,12 +109,6 @@ public class CertificateAuthority {
         Certificate cert = _keyStore.getCertificate("root");
         _keyPair = new KeyPair(cert.getPublicKey(), privateKey);
 
-        //
-        //  Note :
-        //    When you return a success DO-NOT forget to show the
-        //    Activity panel using the line below and start the
-        //    thread listening for connections
-        //
 
         _layout.show(_appFrame.getContentPane(), "ActivityPanel");
 
@@ -166,12 +128,8 @@ public class CertificateAuthority {
         return _activityPanel.getOutputArea();
     }
 
-    //  main
-    //  
-    //  Construct the CA panel, read in the passwords and give the
-    //  control back
     public static void main(String[] args) throws Exception {
-        
+
         CertificateAuthority ca = new CertificateAuthority();
         ca.run();
     }

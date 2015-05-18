@@ -7,7 +7,6 @@
 //  Chat Client starter application.
 package Chat;
 
-//  AWT/Swing
 import java.awt.*;
 import java.awt.event.*;
 import javax.crypto.Cipher;
@@ -18,15 +17,8 @@ import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.DHPublicKeySpec;
 import javax.swing.*;
-
-//  Java
 import java.io.*;
-
-// socket
 import java.net.*;
-
-
-//  Crypto
 import java.security.*;
 import java.security.cert.*;
 import java.security.cert.Certificate;
@@ -43,8 +35,8 @@ public class ChatClient {
     ChatClientThread _thread;
     ChatLoginPanel _loginPanel;
     ChatRoomPanel _chatPanel;
-    PrintWriter _out = null;
-    BufferedReader _in = null;
+    ObjectOutputStream out = null;
+    ObjectInputStream in = null;
     CardLayout _layout;
     JFrame _appFrame;
 
@@ -131,12 +123,7 @@ public class ChatClient {
     //  connect
     //
     //  Called from the login panel when the user clicks the "connect"
-    //  button. You will need to modify this method to add certificate
-    //  authentication.  
-    //  There are two passwords : the keystorepassword is the password
-    //  to access your private key on the file system
-    //  The other is your authentication password on the CA.
-    //
+    //  button.
     public int connect(String loginName, String room,
             String keyStoreName, char[] keyStorePassword,
             String caHost, int caPort,
@@ -161,8 +148,8 @@ public class ChatClient {
                 Socket ca_socket = new Socket(caHost, caPort);
                 OutputStream outStream = ca_socket.getOutputStream();
                 InputStream inStream = ca_socket.getInputStream();
-                ObjectOutputStream out = new ObjectOutputStream(outStream);
-                ObjectInputStream in = new ObjectInputStream(inStream);
+                out = new ObjectOutputStream(outStream);
+                in = new ObjectInputStream(inStream);
 
                 out.writeObject(new PackageRegister(_loginName, RSAPublicKey));
 
@@ -224,9 +211,7 @@ public class ChatClient {
             PackageClientExchange clientExchange = new PackageClientExchange(clientCert, serverCert, kp.getPublic(), RSAPrivateKey, serverExchange);
             out.writeObject(clientExchange);
 
-            System.out.println("Sent client key exchange");
-
-            System.out.println("Calculating shared secret");
+            System.out.println("Sent client key exchange message. Calculating shared secret.");
 
             // calculate shared secret
             KeyAgreement ka = KeyAgreement.getInstance("DH");
@@ -234,8 +219,6 @@ public class ChatClient {
             ka.doPhase(DHServerPublicKey, true);
             SecretKey secretKey = ka.generateSecret("AES");
 
-//            System.out.println("Key exchange completed: " + Arrays.toString(DHClientPublicKey.getEncoded()));
-//            System.out.println("Key exchange completed: " + Arrays.toString(DHServerPublicKey.getEncoded()));
             System.out.println("Key exchange completed: " + Arrays.toString(secretKey.getEncoded()));
 
             // initialize symmetric ciphers
@@ -254,11 +237,6 @@ public class ChatClient {
             if(roomKey == null) {
                 return CONNECTION_REFUSED;
             }
-
-            _out = new PrintWriter(_socket.getOutputStream(), true);
-
-            _in = new BufferedReader(new InputStreamReader(
-                    _socket.getInputStream()));
 
             _layout.show(_appFrame.getContentPane(), "ChatRoom");
 
@@ -298,28 +276,21 @@ public class ChatClient {
     //
     //  Called from the ChatPanel when the user types a carrige return.
     public void sendMessage(String msg) {
-
         try {
-
             msg = _loginName + "> " + msg;
-
-            _out.println(msg);
-
+            PackageChatMessage pkg = new PackageChatMessage(msg, roomKey);
+            out.writeObject(pkg);
         } catch (Exception e) {
-
             System.out.println("ChatClient err: " + e.getMessage());
             e.printStackTrace();
         }
-
     }
 
     public Socket getSocket() {
-
         return _socket;
     }
 
     public JTextArea getOutputArea() {
-
         return _chatPanel.getOutputArea();
     }
 }

@@ -47,7 +47,7 @@ public class PackageClientExchange implements Serializable {
         this.encryptedDHClientPart = cipher.doFinal(DHClientPublicKey.getEncoded());
     }
 
-    public PublicKey getDHClientPart(PrivateKey privateKey, BigInteger p, BigInteger g) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException, ClassNotFoundException, BadPaddingException, IllegalBlockSizeException, IOException, InvalidKeySpecException {
+    public PublicKey getDHClientPart(PrivateKey privateKey) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException, ClassNotFoundException, BadPaddingException, IllegalBlockSizeException, IOException, InvalidKeySpecException {
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher.init(Cipher.DECRYPT_MODE, privateKey);
         KeyFactory keyFac = KeyFactory.getInstance("DH");

@@ -38,28 +38,24 @@ public class ChatClientThread extends Thread {
 
         try {
 
-            BufferedReader in = new BufferedReader(
-                    new InputStreamReader(
-                    _socket.getInputStream()));
+            PackageChatMessage pkg;
 
-            String msg;
-
-            while ((msg = in.readLine()) != null) {
-
+            while ((pkg = (PackageChatMessage) _client.in.readObject()) != null) {
+                String msg = pkg.getMessage(_client.roomKey);
                 consumeMessage(msg + " \n");
             }
 
             _socket.close();
 
         } catch (IOException e) {
-
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
 
     }
 
     public void consumeMessage(String msg) {
-
 
         if (msg != null) {
             _outputArea.append(msg);

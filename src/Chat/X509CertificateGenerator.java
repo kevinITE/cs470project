@@ -1,24 +1,9 @@
-//
-//  X509CertificateGenerator.java
-//
-//  Modified by : Priyank Patel <pkpatel@cs.stanford.edu>
-//                added the policies for the chat rooms A and B
-//  Modified by :Murat Ak, Dec 2011
-//                  Changed to java.security.cert
 package Chat;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.util.*;
 import java.security.*;
 import java.math.BigInteger;
-import java.security.cert.CertificateException;
-//import javax.security.cert.*;
 import java.security.cert.*;
 import sun.security.x509.*;
-import java.security.cert.*;
-import java.security.*;
-import java.math.BigInteger;
 import java.util.Date;
 import java.io.IOException;
 
