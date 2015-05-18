@@ -64,6 +64,7 @@ public class CertificateAuthorityThread extends Thread {
                     ObjectOutputStream out = new ObjectOutputStream(outStream);
                     ObjectInputStream in = new ObjectInputStream(inStream);
 
+                    // receive registration request
                     PackageRegister packageRegister = (PackageRegister) in.readObject();
 
                     if(packageRegister != null) {
@@ -72,6 +73,11 @@ public class CertificateAuthorityThread extends Thread {
                         Certificate existingCert = _ca._keyStore.getCertificate(packageRegister.username);
                         X509Certificate cert = null;
 
+                        /**
+                         * If a certificate does not exists for the requested username, sign a new certificate
+                         * with the requested public key, store it in the keystore and send it to the client.
+                         * Otherwise, reject request.
+                         */
                         if(existingCert == null) {
                             cert = X509CertificateGenerator.generateCertificate("CN="+ packageRegister.username,
                                     _ca._keyPair.getPrivate(), packageRegister.publicKey, 365, "SHA256withRSA");
