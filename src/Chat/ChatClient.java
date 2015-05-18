@@ -16,6 +16,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.DHPublicKeySpec;
+import javax.crypto.spec.IvParameterSpec;
 import javax.swing.*;
 import java.io.*;
 import java.net.*;
@@ -45,6 +46,7 @@ public class ChatClient {
     Certificate clientCert;
     PrivateKey RSAPrivateKey;
     SecretKey roomKey;
+    boolean exit = false;
 
     //  ChatClient Constructor
     //
@@ -108,8 +110,9 @@ public class ChatClient {
 
         try {
             _socket.shutdownOutput();
-            _thread.join();
             _socket.close();
+            exit = true;
+            _thread.join();
 
         } catch (Exception err) {
             System.out.println("ChatClient error: " + err.getMessage());
@@ -179,8 +182,8 @@ public class ChatClient {
             _socket = new Socket(serverHost, serverPort);
             OutputStream outStream = _socket.getOutputStream();
             InputStream inStream = _socket.getInputStream();
-            ObjectOutputStream out = new ObjectOutputStream(outStream);
-            ObjectInputStream in = new ObjectInputStream(inStream);
+            out = new ObjectOutputStream(outStream);
+            in = new ObjectInputStream(inStream);
 
             System.out.println("Connection established to the chat server");
 
@@ -224,19 +227,24 @@ public class ChatClient {
             // initialize symmetric ciphers
             Cipher enCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             Cipher deCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            enCipher.init(Cipher.ENCRYPT_MODE, secretKey);
-            deCipher.init(Cipher.DECRYPT_MODE, secretKey);
+            enCipher.init(Cipher.ENCRYPT_MODE, secretKey, new IvParameterSpec("yigitozenemredogru".getBytes(), 0, 16));
+            deCipher.init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec("yigitozenemredogru".getBytes(), 0, 16));
 
             // send join room request
             out.writeObject(new SealedObject(room, enCipher));
+
+            System.out.println("Join room request sent.");
 
             // receive join room reply
             SealedObject joinRoomReply = (SealedObject) in.readObject();
             roomKey = (SecretKey) joinRoomReply.getObject(deCipher);
 
             if(roomKey == null) {
+                System.out.println("Joining room failed.");
                 return CONNECTION_REFUSED;
             }
+
+            System.out.println("Joined room.");
 
             _layout.show(_appFrame.getContentPane(), "ChatRoom");
 

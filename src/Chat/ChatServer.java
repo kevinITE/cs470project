@@ -37,12 +37,14 @@ public class ChatServer {
     public ChatServer(int port) {
         try {
             clients = new HashMap<String, HashMap<Integer, ClientRecord>>();
+            roomKeys = new HashMap<String, SecretKey>();
             _serverSocket = null;
             clientID = -1;
             _port = port;
             InetAddress serverAddr = InetAddress.getByName(null);
             _hostName = serverAddr.getHostName();
 
+            // load server keystore
             FileInputStream inputStream = new FileInputStream(new File(this.SERVER_KEYSTORE));
             keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
             keyStore.load(inputStream, this.SERVER_KEYSTORE_PASSWORD);

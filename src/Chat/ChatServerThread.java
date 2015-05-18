@@ -11,7 +11,6 @@ public class ChatServerThread extends Thread {
 
     private Socket socket= null;
     private ChatServer server = null;
-    private Map<Integer, ClientRecord> _records = null;
 
     public ChatServerThread(ChatServer server, Socket socket) {
         super("ChatServerThread");
@@ -21,6 +20,7 @@ public class ChatServerThread extends Thread {
 
     public void run() {
         ObjectInputStream in;
+        String room;
 
         try {
             ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
@@ -64,14 +64,14 @@ public class ChatServerThread extends Thread {
             // initialize symmetric ciphers
             Cipher enCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             Cipher deCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            enCipher.init(Cipher.ENCRYPT_MODE, sharedKey);
-            deCipher.init(Cipher.DECRYPT_MODE, sharedKey);
+            enCipher.init(Cipher.ENCRYPT_MODE, sharedKey, new IvParameterSpec("yigitozenemredogru".getBytes(), 0, 16));
+            deCipher.init(Cipher.DECRYPT_MODE, sharedKey, new IvParameterSpec("yigitozenemredogru".getBytes(), 0, 16));
 
             // receive join room request
             SealedObject joinRoomRequest = (SealedObject) in.readObject();
-            String room = (String) joinRoomRequest.getObject(deCipher);
+            room = (String) joinRoomRequest.getObject(deCipher);
 
-            ClientRecord clientRecord = new ClientRecord(socket, sharedKey);
+            ClientRecord clientRecord = new ClientRecord(socket, sharedKey, out);
             HashMap<Integer, ClientRecord> roomClients = server.clients.get(room);
             SecretKey roomKey;
             if(roomClients == null) {
@@ -89,6 +89,8 @@ public class ChatServerThread extends Thread {
             // send join room reply
             out.writeObject(new SealedObject(roomKey, enCipher));
 
+            System.out.println("client joined room " + room);
+
 
         } catch (Exception e) {
             System.out.println("Client connection failed");
@@ -97,14 +99,19 @@ public class ChatServerThread extends Thread {
         }
 
         try {
-            Object receivedMsg;
+            PackageChatMessage receivedMsg;
+            Map<Integer, ClientRecord> peers = server.clients.get(room);
 
-            while ((receivedMsg = in.readObject()) != null) {
+            while ((receivedMsg = (PackageChatMessage) in.readObject()) != null) {
 
-                for(ClientRecord c : _records.values()) {
-                    Socket socket = c.getClientSocket();
-                    ObjectOutputStream peerOut = new ObjectOutputStream(socket.getOutputStream());
-                    peerOut.writeObject(receivedMsg);
+                for(ClientRecord c : peers.values()) {
+//                    Socket socket = c.getClientSocket();
+//                    ObjectOutputStream peerOut = new ObjectOutputStream(socket.getOutputStream());
+                    try {
+                        ObjectOutputStream peerOut = c.getOutputStream();
+                        peerOut.writeObject(receivedMsg);
+                    } catch (Exception e) {
+                    }
                 }
 
             }
