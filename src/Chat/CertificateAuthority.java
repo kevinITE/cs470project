@@ -102,7 +102,7 @@ public class CertificateAuthority {
 
         this._ksFileName = _ksFileName;
         this._privateKeyPass = _privateKeyPass;
-        FileInputStream keyStoreStream = new FileInputStream(new File(_ksFileName));
+        FileInputStream keyStoreStream = new FileInputStream(new File(getClass().getResource(_ksFileName).getPath()));
         _keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
         _keyStore.load(keyStoreStream, _privateKeyPass);
         PrivateKey privateKey = (PrivateKey) _keyStore.getKey("root", _privateKeyPass);

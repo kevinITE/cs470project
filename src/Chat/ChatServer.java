@@ -25,7 +25,7 @@ public class ChatServer {
     int clientID = 0;
     Map<String, HashMap<Integer, ClientRecord>> clients;
     Map<String, SecretKey> roomKeys;
-    String SERVER_KEYSTORE = "/home/yigit/Chat/ks_server";
+    String SERVER_KEYSTORE = "keystores/ks_server";
     char[] SERVER_KEYSTORE_PASSWORD = "123456".toCharArray();
     char[] SERVER_KEY_PASSWORD = "123456".toCharArray();
     KeyStore keyStore;
@@ -45,7 +45,7 @@ public class ChatServer {
             _hostName = serverAddr.getHostName();
 
             // load server keystore
-            FileInputStream inputStream = new FileInputStream(new File(this.SERVER_KEYSTORE));
+            FileInputStream inputStream = new FileInputStream(new File(getClass().getResource(SERVER_KEYSTORE).getPath()));
             keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
             keyStore.load(inputStream, this.SERVER_KEYSTORE_PASSWORD);
             CAPublicKey = keyStore.getCertificate("ca").getPublicKey();
@@ -67,8 +67,7 @@ public class ChatServer {
     public static void main(String args[]) {
 
         try {
-
-            int port = 7779;
+            int port = 7777;
             ChatServer server = new ChatServer(port);
             server.run();
 

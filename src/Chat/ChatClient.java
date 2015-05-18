@@ -137,7 +137,7 @@ public class ChatClient {
             _loginName = loginName;
 
             // load client keystore
-            FileInputStream inputStream = new FileInputStream(new File(keyStoreName));
+            FileInputStream inputStream = new FileInputStream(new File(getClass().getResource(keyStoreName).getPath()));
             KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
             keyStore.load(inputStream, keyStorePassword);
             CAPublicKey = keyStore.getCertificate("ca").getPublicKey();
